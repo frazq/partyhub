@@ -1,20 +1,63 @@
 // src/pages/Login.tsx
-import { TextInput, PasswordInput, Button, Box, Title, Flex } from '@mantine/core';
+import { TextInput, PasswordInput, Button, Box, Title, Flex, Text } from '@mantine/core';
+import { useForm, yupResolver } from '@mantine/form';
+import * as Yup from 'yup';
 import { AnimatedBackground } from '../components/AnimatedBackground';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-const navigate = useNavigate();
 
 interface LoginForm {
   email: string;
   password: string;
 }
 
+const loginSchema = Yup.object().shape({
+  email: Yup.string().email('Niepoprawny adres email').required('Email jest wymagany'),
+  password: Yup.string().required('Hasło jest wymagane'),
+});
+
 export const Login: React.FC = () => {
-  const [formData, setFormData] = useState<LoginForm>({
-    email: '',
-    password: ''
+  const navigate = useNavigate();
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+
+  const form = useForm<LoginForm>({
+    validate: yupResolver(loginSchema),
+    initialValues: {
+      email: '',
+      password: '',
+    },
   });
+
+  const handleLogin = async (values: LoginForm) => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem('userToken', data.token);
+        localStorage.setItem('userData', JSON.stringify(data.user));
+        navigate('/dashboard');
+      } else {
+        setError(data.message || 'Błąd logowania');
+      }
+    } catch (error) {
+      setError('Wystąpił błąd podczas logowania');
+      console.error('Login error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const inputStyles = {
     input: {
@@ -22,7 +65,7 @@ export const Login: React.FC = () => {
       border: '1px solid rgba(255, 0, 0, 0.2)',
       borderRadius: 0,
       color: 'white',
-      padding: '15px 20px 15px 20px',
+      padding: '15px 20px',
       fontSize: '16px',
       height: '50px',
       width: '100%',
@@ -32,17 +75,6 @@ export const Login: React.FC = () => {
         boxShadow: '0 0 10px rgba(255, 0, 0, 0.2)'
       }
     }
-  };
-
-  const buttonBaseStyles = {
-    border: 'none',
-    borderRadius: 0,
-    padding: '10px 30px',
-    height: 45,
-    fontSize: '16px',
-    fontWeight: 600,
-    letterSpacing: '1px',
-    transition: 'all 0.3s ease',
   };
 
   return (
@@ -68,20 +100,8 @@ export const Login: React.FC = () => {
             backdropFilter: 'blur(20px)',
             border: '1px solid rgba(255, 0, 0, 0.1)',
             boxShadow: '0 0 30px rgba(255, 0, 0, 0.1)',
-            position: 'relative',
           }}
         >
-          <Box 
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '4px',
-              background: 'linear-gradient(90deg, transparent, #FF0000, transparent)',
-            }}
-          />
-          
           <Title 
             order={1} 
             ta="center" 
@@ -96,23 +116,22 @@ export const Login: React.FC = () => {
               textShadow: '0 0 20px rgba(255, 0, 0, 0.5)',
             }}
           >
-            partyhub
+            PARTYHUB
           </Title>
 
-          <Box style={{ width: '100%' }}>
+          <form onSubmit={form.onSubmit(handleLogin)}>
             <TextInput
+              required
               placeholder="Email"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              {...form.getInputProps('email')}
               mb={25}
               styles={inputStyles}
             />
 
-            <Box style={{ width: '100%' }}>
             <PasswordInput
+              required
               placeholder="Hasło"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              {...form.getInputProps('password')}
               mb={40}
               styles={{
                 ...inputStyles,
@@ -125,58 +144,50 @@ export const Login: React.FC = () => {
                   paddingRight: '45px'
                 },
                 visibilityToggle: {
-                  position: 'absolute',
-                  right: '20px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '30px',
-                  height: '30px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
                   color: '#FF0000',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 2,
                   opacity: 0.7,
                   '&:hover': {
                     opacity: 1
                   }
                 }
               }}
-              
             />
-            </Box>
-          </Box>
-              
-          <Flex justify="space-between" align="center">
-            <Button onClick={() => navigate('/register')} 
-              style={{
-                ...buttonBaseStyles,
-                background: 'rgba(255, 0, 0, 0.2)',
-                color: '#FF4444',
-                '&:hover': {
-                  background: 'rgba(255, 0, 0, 0.3)',
-                  color: '#FF0000'
-                }
-              }}
-            >
-              ZAREJESTRUJ
-            </Button>
-            
-            <Button 
-              style={{
-                ...buttonBaseStyles,
-                background: 'linear-gradient(45deg, #FF0000, #FF4444)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #FF4444, #FF0000)',
-                  boxShadow: '0 0 20px rgba(255, 0, 0, 0.3)'
-                }
-              }}
-            >
-              ZALOGUJ SIĘ
-            </Button>
-          </Flex>
+
+            {error && (
+              <Text color="red" mb={20} ta="center">
+                {error}
+              </Text>
+            )}
+
+            <Flex gap="md" justify="space-between">
+              <Button
+                variant="subtle"
+                onClick={() => navigate('/register')}
+                style={{
+                  flex: 1,
+                  color: '#FF4444',
+                }}
+                disabled={loading}
+              >
+                ZAREJESTRUJ
+              </Button>
+
+              <Button
+                type="submit"
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(45deg, #FF0000, #FF4444)',
+                  border: 'none',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #FF4444, #FF0000)',
+                  }
+                }}
+                loading={loading}
+              >
+                ZALOGUJ SIĘ
+              </Button>
+            </Flex>
+          </form>
         </Box>
       </Box>
     </Box>

@@ -1,7 +1,9 @@
 // src/App.tsx
 import { MantineProvider, createTheme } from '@mantine/core';
+import { Routes, Route } from 'react-router-dom';
 import { AgeVerification } from './components/AgeVerification';
 import { Login } from './pages/Login';
+import { Register } from './pages/Register';
 
 const theme = createTheme({
   fontFamily: 'Inter, sans-serif',
@@ -21,8 +23,10 @@ const App = () => {
         padding: 0,
         margin: 0,
       }}>
-        <AgeVerification />
-        <Login />
+        <Routes>
+          <Route path="/" element={<><AgeVerification /><Login /></>} />
+          <Route path="/register" element={<Register />} />
+        </Routes>
       </div>
     </MantineProvider>
   );
